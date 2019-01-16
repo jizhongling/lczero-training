@@ -55,6 +55,7 @@ def conv2d(x, W):
 
 class TFProcess:
     def __init__(self, cfg):
+        self.has_se = False
         self.cfg = cfg
         self.net = Net()
         self.root_dir = os.path.join(self.cfg['training']['path'], self.cfg['name'])
@@ -522,7 +523,7 @@ class TFProcess:
                 wt_flt = [wt for wt in np.ravel(nparray)]
             all_weights.append(wt_flt)
 
-        self.net.fill_net(all_weights)
+        self.net.fill_net(all_weights, self.has_se)
         self.net.save_proto(filename)
 
     def get_batchnorm_key(self):
@@ -573,23 +574,26 @@ class TFProcess:
                 tf.layers.batch_normalization(
                     conv2d(inputs, W_conv),
                     epsilon=1e-5, axis=1, fused=True,
-                    center=True, scale=True,
+                    center=True, scale=self.has_se,
                     virtual_batch_size=64,
                     training=self.training)
         h_conv = tf.nn.relu(h_bn)
 
-        gamma_key = weight_key + "/batch_normalization/gamma:0"
+        if self.has_se:
+            gamma_key = weight_key + "/batch_normalization/gamma:0"
         beta_key = weight_key + "/batch_normalization/beta:0"
         mean_key = weight_key + "/batch_normalization/moving_mean:0"
         var_key = weight_key + "/batch_normalization/moving_variance:0"
 
-        gamma = tf.get_default_graph().get_tensor_by_name(gamma_key)
+        if self.has_se:
+            gamma = tf.get_default_graph().get_tensor_by_name(gamma_key)
         beta = tf.get_default_graph().get_tensor_by_name(beta_key)
         mean = tf.get_default_graph().get_tensor_by_name(mean_key)
         var = tf.get_default_graph().get_tensor_by_name(var_key)
 
         self.weights.append(W_conv)
-        self.weights.append(gamma)
+        if self.has_se:
+            self.weights.append(gamma)
         self.weights.append(beta)
         self.weights.append(mean)
         self.weights.append(var)
@@ -613,7 +617,7 @@ class TFProcess:
                 tf.layers.batch_normalization(
                     conv2d(inputs, W_conv_1),
                     epsilon=1e-5, axis=1, fused=True,
-                    center=True, scale=True,
+                    center=True, scale=self.has_se,
                     virtual_batch_size=64,
                     training=self.training)
         h_out_1 = tf.nn.relu(h_bn1)
@@ -622,46 +626,55 @@ class TFProcess:
                 tf.layers.batch_normalization(
                     conv2d(h_out_1, W_conv_2),
                     epsilon=1e-5, axis=1, fused=True,
-                    center=True, scale=True,
+                    center=True, scale=self.has_se,
                     virtual_batch_size=64,
                     training=self.training)
 
-        gamma_key_1 = weight_key_1 + "/batch_normalization/gamma:0"
+        if self.has_se:
+            gamma_key_1 = weight_key_1 + "/batch_normalization/gamma:0"
         beta_key_1 = weight_key_1 + "/batch_normalization/beta:0"
         mean_key_1 = weight_key_1 + "/batch_normalization/moving_mean:0"
         var_key_1 = weight_key_1 + "/batch_normalization/moving_variance:0"
 
-        gamma_1 = tf.get_default_graph().get_tensor_by_name(gamma_key_1)
+        if self.has_se:
+            gamma_1 = tf.get_default_graph().get_tensor_by_name(gamma_key_1)
         beta_1 = tf.get_default_graph().get_tensor_by_name(beta_key_1)
         mean_1 = tf.get_default_graph().get_tensor_by_name(mean_key_1)
         var_1 = tf.get_default_graph().get_tensor_by_name(var_key_1)
 
-        gamma_key_2 = weight_key_2 + "/batch_normalization/gamma:0"
+        if self.has_se:
+            gamma_key_2 = weight_key_2 + "/batch_normalization/gamma:0"
         beta_key_2 = weight_key_2 + "/batch_normalization/beta:0"
         mean_key_2 = weight_key_2 + "/batch_normalization/moving_mean:0"
         var_key_2 = weight_key_2 + "/batch_normalization/moving_variance:0"
 
-        gamma_2 = tf.get_default_graph().get_tensor_by_name(gamma_key_2)
+        if self.has_se:
+            gamma_2 = tf.get_default_graph().get_tensor_by_name(gamma_key_2)
         beta_2 = tf.get_default_graph().get_tensor_by_name(beta_key_2)
         mean_2 = tf.get_default_graph().get_tensor_by_name(mean_key_2)
         var_2 = tf.get_default_graph().get_tensor_by_name(var_key_2)
 
         self.weights.append(W_conv_1)
-        self.weights.append(gamma_1)
+        if self.has_se:
+            self.weights.append(gamma_1)
         self.weights.append(beta_1)
         self.weights.append(mean_1)
         self.weights.append(var_1)
 
         self.weights.append(W_conv_2)
-        self.weights.append(gamma_2)
+        if self.has_se:
+            self.weights.append(gamma_2)
         self.weights.append(beta_2)
         self.weights.append(mean_2)
         self.weights.append(var_2)
 
         # Must be after adding weights to self.weights
-        with tf.variable_scope(weight_key_2):
-            h_se = self.squeeze_excitation(h_bn2, channels, self.SE_ratio)
-        h_out_2 = tf.nn.relu(tf.add(h_se, orig))
+        if self.has_se:
+            with tf.variable_scope(weight_key_2):
+                h_se = self.squeeze_excitation(h_bn2, channels, self.SE_ratio)
+            h_out_2 = tf.nn.relu(tf.add(h_se, orig))
+        else:
+            h_out_2 = tf.nn.relu(tf.add(h_bn2, orig))
 
         return h_out_2
 
