@@ -27,6 +27,7 @@ import multiprocessing as mp
 import tensorflow as tf
 from tfprocess import TFProcess
 from chunkparser import ChunkParser
+from net import Net
 
 SKIP = 32
 
@@ -125,9 +126,17 @@ def main(cmd):
     tfprocess = TFProcess(cfg)
     tfprocess.init(dataset, train_iterator, test_iterator)
 
+    weigts_file = "/home/jizhongling/sources/lc0/build/release/weights.pb.gz"
     if os.path.exists(os.path.join(root_dir, 'checkpoint')):
         cp = tf.train.latest_checkpoint(root_dir)
         tfprocess.restore(cp)
+    elif os.path.exists(weigts_file):
+        print("Start reading weights")
+        net = Net()
+        net.parse_proto(weigts_file)
+        weights = net.get_weights()
+        tfprocess.replace_weights(weights)
+        print("End reading weights")
 
     # Sweeps through all test chunks statistically
     # Assumes average of 10 samples per test game.
