@@ -40,15 +40,19 @@ model:
     residual_blocks: 6
 ...
 """
-YAMLCFG = textwrap.dedent(YAMLCFG).strip()
-cfg = yaml.safe_load(YAMLCFG)
+#YAMLCFG = textwrap.dedent(YAMLCFG).strip()
+#cfg = yaml.safe_load(YAMLCFG)
 argparser = argparse.ArgumentParser(description='Convert net to model.')
 argparser.add_argument('net', type=str,
     help='Net file to be converted to a model checkpoint.')
 argparser.add_argument('--start', type=int, default=0,
     help='Offset to set global_step to.')
+argparser.add_argument('--cfg', type=argparse.FileType('r'),
+    help='yaml configuration with training parameters.')
 args = argparser.parse_args()
 START_FROM = args.start
+cfg = yaml.safe_load(args.cfg.read())
+print(yaml.dump(cfg, default_flow_style=False))
 net = Net()
 net.parse_proto(args.net)
 
@@ -69,7 +73,8 @@ x = [
 tfp = tfprocess.TFProcess(cfg)
 tfp.init_net(x)
 tfp.replace_weights(weights)
-path = os.path.join(os.getcwd(), cfg['name'])
+#path = os.path.join(os.getcwd(), cfg['name'])
+path = os.path.join(os.path.join(cfg['training']['path'], cfg['name']), cfg['name'])
 update_global_step = tfp.global_step.assign(START_FROM)
 tfp.session.run(update_global_step)
 save_path = tfp.saver.save(tfp.session, path, global_step=START_FROM)

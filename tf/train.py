@@ -126,17 +126,17 @@ def main(cmd):
     tfprocess = TFProcess(cfg)
     tfprocess.init(dataset, train_iterator, test_iterator)
 
-    weigts_file = "/home/jizhongling/sources/lc0/build/release/weights.pb.gz"
+    weights_file = cfg['dataset']['weights']
     if os.path.exists(os.path.join(root_dir, 'checkpoint')):
         cp = tf.train.latest_checkpoint(root_dir)
         tfprocess.restore(cp)
-    elif os.path.exists(weigts_file):
-        print("Start reading weights")
+    elif os.path.exists(weights_file):
+        print("Start replacing weights by {}".format(weights_file))
         net = Net()
-        net.parse_proto(weigts_file)
+        net.parse_proto(weights_file)
         weights = net.get_weights()
         tfprocess.replace_weights(weights)
-        print("End reading weights")
+        print("End replacing weights")
 
     # Sweeps through all test chunks statistically
     # Assumes average of 10 samples per test game.

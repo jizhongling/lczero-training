@@ -192,7 +192,15 @@ class TFProcess:
 
     def replace_weights(self, new_weights):
         for e, weights in enumerate(self.weights):
-            if weights.shape.ndims == 4:
+            if not self.has_se and weights.name.endswith('/batch_normalization/beta:0'):
+                # Batch norm beta is written as bias before the batch normalization
+                # in the weight file for backwards compatibility reasons.
+                bias = tf.constant(new_weights[e], shape=weights.shape)
+                # Weight file order: bias, means, variances
+                var = tf.constant(new_weights[e + 2], shape=weights.shape)
+                new_beta = tf.divide(bias, tf.sqrt(var + tf.constant(1e-5)))
+                self.session.run(tf.assign(weights, new_beta))
+            elif weights.shape.ndims == 4:
                 # Rescale rule50 related weights as clients do not normalize the input.
                 if e == 0:
                     num_inputs = 112

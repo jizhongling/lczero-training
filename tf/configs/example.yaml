@@ -1,6 +1,6 @@
 %YAML 1.2
 ---
-name: 'kb1-256x20'                     # ideally no spaces
+name: 'online-256x20'                  # ideally no spaces
 gpu: 0                                 # gpu id to process on
 
 dataset: 
@@ -11,22 +11,21 @@ dataset:
   # input_test: '/path/to/chunks/*/draw/'  # supports glob
   # For a one-shot run with all data in one directory.
   input: '/home/jizhongling/sources/lc0/build/release/data*/'
+  weights: '/home/jizhongling/sources/lc0/build/release/weights.pb.gz'
 
 training:
     batch_size: 64                     # training batch
     test_steps: 10                     # eval test set values after this many steps
     train_avg_report_steps: 1          # training reports its average values after this many steps.
     total_steps: 20                    # terminate after these steps
-    warmup_steps: 20                   # if global step is less than this, scale the current LR by ratio of global step to this value
+    warmup_steps: 250                  # if global step is less than this, scale the current LR by ratio of global step to this value
     # checkpoint_steps: 10000          # optional frequency for checkpointing before finish
     shuffle_size: 524288               # size of the shuffle buffer
     lr_values:                         # list of learning rates
-        - 0.02
-        - 0.002
+        - 0.0005
         - 0.0005
     lr_boundaries:                     # list of boundaries
         - 100000
-        - 130000
     policy_loss_weight: 1.0            # weight of policy loss
     value_loss_weight: 1.0             # weight of value loss
     path: '/home/jizhongling/sources/lc0/build/release/weights'    # network storage dir
@@ -34,4 +33,5 @@ training:
 model:
   filters: 256
   residual_blocks: 20
-  se_ratio: 1
+  se_ratio: 2
+...
